@@ -1,0 +1,42 @@
+name: Docker API CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Build API image
+        run: docker compose build
+
+      - name: Start API and wait for health check
+        run: docker compose up -d --wait --wait-timeout 60
+
+      - name: Run API integration tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Show container logs
+        if: always()
+        run: docker compose logs --no-color --tail 100
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down
